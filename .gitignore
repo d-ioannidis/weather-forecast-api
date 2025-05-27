@@ -24,3 +24,7 @@ migrations/
 
 # Ignore 'report.txt'
 report.txt
+
+# Ignore misc files
+.DS_Store
+.zip
