@@ -1,0 +1,49 @@
+services:
+  caddy:
+    # build: .
+    image: ioanlabs/caddy-proxy-cloudflare:caddy-2.10.0-plugins-latest
+    # From: https://hub.docker.com/_/caddy
+    # Caddy ships with HTTP/3 support enabled by default. To improve the performance of this UDP based protocol,
+    # the underlying quic-go library tries to increase the buffer sizes for its socket. The NET_ADMIN capability
+    # allows it to override the low default limits of the operating system without having to change kernel
+    # parameters via sysctl.
+    container_name: caddy-proxy
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file:
+      - .env
+    environment:
+      - CADDY_INGRESS_NETWORKS=caddy-net
+    networks:
+      - caddy-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - caddy_data:/data
+    restart: unless-stopped
+  api:
+    build: .
+    container_name: weather-api
+    restart: unless-stopped
+    env_file:
+      - .env # contains METEOMATICS_USERNAME/PASSWORD
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    volumes:
+      - ./db:/db
+    networks:
+      - caddy-net
+    labels:
+      caddy: weather.ioannidis.dev
+      caddy.tls.dns: "cloudflare ${CLOUDFLARE_API_TOKEN}"
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+
+volumes:
+  caddy_data:
+
+networks:
+  caddy-net:
+    external: true
